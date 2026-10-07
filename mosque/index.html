@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b2e28">
+<meta name="description" content="شاشة المسجد: مواقيت الأذان والإقامة، والجمعة، وإعلانات المسجد. بلا إعلانات تجارية.">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../img/icon-192.png">
+<link rel="apple-touch-icon" href="../img/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>شاشة المسجد · نودي للصلاة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<!-- Anonymous visit statistics (no cookies), same GoatCounter site as the home page. -->
+<script data-goatcounter="https://nudiya.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+<style>
+/* Mosque page.
+   - Setup form (first visit, or "Edit"): name, place, iqama, Jumuah, announcements, languages.
+   - Display: on a wide screen (TV in the mosque) a full-screen board; on a phone a simple list for the congregation.
+   The whole mosque setup travels in the link (#m=…), so there is no server and no account. */
+:root{
+  --green-950:#061c18; --green-900:#0b2e28; --green-800:#0f3d35; --green-700:#16514a;
+  --gold:#c9a35a; --gold-soft:#e8d3a2; --cream:#f4ecd8;
+  --bg:#f3efe6; --sheet:#fbf9f4; --line:#e4dccb; --fg:#1d2a26; --muted:#6b7a74; --err:#b3261e;
+  --display:"Amiri","Noto Naskh Arabic",serif;
+  --body:"IBM Plex Sans Arabic","Segoe UI",Tahoma,system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#081f1b; --sheet:#0d2a25; --line:#1f4740; --fg:#ece6d6; --muted:#9db3ab; --err:#f2b8b5; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#081f1b; --sheet:#0d2a25; --line:#1f4740; --fg:#ece6d6; --muted:#9db3ab; --err:#f2b8b5; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ---------- setup ---------- */
+.setup{max-width:640px;margin:0 auto;padding:0 16px 48px}
+.setup header{background:var(--green-900);color:var(--cream);margin:0 -16px 20px;padding:28px 20px 24px;text-align:center}
+.setup header h1{font-family:var(--display);font-weight:700;font-size:30px;margin:0 0 6px;color:var(--gold-soft)}
+.setup header p{margin:0 auto;max-width:520px;color:#c9d6d0;font-size:14px}
+.langbar{display:flex;gap:6px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.langbar button{background:transparent;border:1px solid #3c6a60;color:#c9d6d0;border-radius:99px;padding:3px 12px;font-size:13px}
+.langbar button[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--green-950)}
+fieldset{border:1px solid var(--line);border-radius:16px;background:var(--sheet);margin:0 0 14px;padding:14px 16px 16px}
+legend{font-weight:600;padding:0 6px;color:var(--gold)}
+label.f{display:block;margin:8px 0 4px;font-size:13.5px;color:var(--muted)}
+input[type=text],input[type=time],input[type=number],select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:9px 11px;min-height:42px}
+textarea{min-height:96px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;border:1px solid var(--line);background:var(--sheet);padding:10px 16px;font-weight:600;min-height:44px}
+.btn.primary{background:var(--green-800);border-color:var(--green-800);color:var(--gold-soft)}
+.btn svg{width:18px;height:18px}
+.check{display:flex;align-items:center;gap:8px;margin-top:10px}
+.check input{width:18px;height:18px;accent-color:var(--green-700)}
+.iq{display:grid;grid-template-columns:90px 1fr 110px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.iq:last-child{border-bottom:0}
+.iq b{font-weight:600}
+.adj{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.adj label{font-size:12.5px;color:var(--muted);text-align:center}
+.adj input{text-align:center;padding:6px}
+.err{color:var(--err);font-size:13.5px;margin-top:8px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+details summary{cursor:pointer;color:var(--gold);font-weight:600}
+@media (max-width:480px){ .iq{grid-template-columns:72px 1fr 92px} .adj{grid-template-columns:repeat(3,1fr)} }
+
+/* ---------- display (shared) ---------- */
+.board{height:100vh;height:100dvh;min-height:560px;background:radial-gradient(120% 90% at 50% 0%,var(--green-800),var(--green-950) 70%);color:var(--cream);display:flex;flex-direction:column;position:relative;overflow:hidden}
+.board .pattern{position:absolute;inset:0;opacity:.07;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M40 4l10 26 26 10-26 10-10 26-10-26L4 40l26-10z' fill='none' stroke='%23e8d3a2' stroke-width='1.2'/%3E%3C/svg%3E")}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:clamp(14px,2.2vw,34px) clamp(16px,3vw,48px) 0;position:relative}
+.mname{font-family:var(--display);font-weight:700;color:var(--gold-soft);font-size:clamp(26px,3.6vw,64px);line-height:1.15;margin:0}
+.msub{color:#b9c9c2;font-size:clamp(13px,1.2vw,22px)}
+.clockbox{text-align:center}
+.clock{font-variant-numeric:tabular-nums;font-weight:600;font-size:clamp(34px,5.6vw,108px);line-height:1;letter-spacing:1px;direction:ltr}
+.clock small{font-size:.38em;opacity:.7;margin-inline-start:4px}
+.dates{color:#c9d6d0;font-size:clamp(13px,1.25vw,24px);margin-top:6px}
+.hero{flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(10px,2vw,30px) 16px;position:relative}
+.hero .lbl{color:var(--gold);font-size:clamp(15px,1.6vw,30px);font-weight:600}
+.hero .big{font-family:var(--display);font-weight:700;font-size:clamp(40px,6vw,120px);line-height:1.1;margin:4px 0}
+.hero .cd{font-variant-numeric:tabular-nums;font-size:clamp(30px,4.6vw,92px);font-weight:600;direction:ltr;color:var(--gold-soft)}
+.hero .sec{color:#b9c9c2;font-size:clamp(13px,1.3vw,24px)}
+.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:clamp(8px,1vw,18px);padding:0 clamp(16px,3vw,48px);position:relative}
+.card{background:rgba(6,28,24,.55);border:1px solid rgba(232,211,162,.18);border-radius:clamp(12px,1.2vw,22px);padding:clamp(10px,1.2vw,22px) 8px;text-align:center}
+.card.next{background:linear-gradient(180deg,rgba(201,163,90,.28),rgba(201,163,90,.12));border-color:var(--gold)}
+.card .pn{font-family:var(--display);font-weight:700;font-size:clamp(20px,2.2vw,44px);color:var(--gold-soft);line-height:1.2}
+.card .pn2{font-size:clamp(11px,1vw,19px);color:#b9c9c2}
+.card .at{font-variant-numeric:tabular-nums;font-weight:600;font-size:clamp(24px,2.8vw,56px);line-height:1.15;direction:ltr;margin-top:6px}
+.card .iqt{font-variant-numeric:tabular-nums;font-size:clamp(13px,1.35vw,26px);color:#c9d6d0;margin-top:4px}
+.card .iqt b{color:var(--gold-soft);font-weight:600;direction:ltr;display:inline-block}
+.foot{display:flex;align-items:stretch;gap:14px;padding:clamp(12px,1.6vw,28px) clamp(16px,3vw,48px) clamp(12px,1.6vw,26px);position:relative}
+.ticker{flex:1;overflow:hidden;background:rgba(6,28,24,.6);border:1px solid rgba(232,211,162,.18);border-radius:14px;display:flex;align-items:center;min-height:clamp(44px,4vw,74px)}
+.ticker .tl{background:var(--gold);color:var(--green-950);font-weight:700;padding:0 14px;align-self:stretch;display:flex;align-items:center;font-size:clamp(13px,1.2vw,22px);white-space:nowrap}
+.ticker .tw{overflow:hidden;flex:1;position:relative;align-self:stretch;min-height:clamp(44px,4vw,74px)}
+.ticker .tt{white-space:nowrap;font-size:clamp(15px,1.6vw,30px);position:absolute;left:0;top:50%;margin-top:-.8em;line-height:1.6;will-change:transform}
+.ticker.static .tw{min-height:0}
+.ticker.static .tt{position:static;white-space:normal;margin:0;padding:8px 12px;display:block}
+.qr{background:#fff;border-radius:14px;padding:6px 12px 6px 6px;display:flex;align-items:center;gap:10px;color:var(--green-950);border:0;font:inherit;cursor:pointer;text-align:start}
+.qr svg{width:clamp(110px,9.5vw,200px);height:auto;display:block}
+.qrbig{position:fixed;inset:0;z-index:15;background:rgba(4,18,15,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:16px;text-align:center;color:var(--cream)}
+.qrbig .qbox{background:#fff;border-radius:18px;padding:10px;width:min(80vmin,560px)}
+.qrbig .qbox svg{width:100%;height:auto;display:block}
+.qrbig p{margin:0;font-size:clamp(16px,2vw,28px);color:var(--gold-soft);font-weight:600}
+.qr span{font-size:clamp(11px,1vw,18px);font-weight:600;max-width:9em;line-height:1.3}
+.tools{position:fixed;inset-inline-end:12px;top:12px;display:flex;gap:6px;opacity:.15;transition:opacity .3s;z-index:5}
+.tools:hover,.tools:focus-within,.board.touch .tools{opacity:1}
+.tools button{background:rgba(6,28,24,.8);border:1px solid rgba(232,211,162,.35);color:var(--gold-soft);border-radius:10px;padding:6px 10px;display:flex;align-items:center;gap:6px;font-size:13px}
+.tools svg{width:16px;height:16px}
+
+/* full-board states */
+.overlay{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:radial-gradient(90% 90% at 50% 40%,var(--green-800),var(--green-950));padding:24px}
+.overlay .ohead{position:absolute;top:clamp(14px,2vw,30px);left:0;right:0;text-align:center;color:#9db3ab;font-size:clamp(14px,1.4vw,26px)}
+.overlay .ohead b{color:var(--gold-soft);font-family:var(--display);font-weight:700;font-size:1.3em}
+.overlay .olbl{color:var(--gold);font-size:clamp(18px,2.2vw,40px);font-weight:600}
+.overlay .oname{font-family:var(--display);font-weight:700;color:var(--gold-soft);font-size:clamp(44px,7vw,140px);line-height:1.1}
+.ring{position:relative;width:min(56vmin,520px);aspect-ratio:1;margin:18px auto}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;font-weight:600;font-size:min(15vmin,140px);line-height:1;direction:ltr}
+.ring .num small{font-size:.22em;color:#b9c9c2;margin-top:8px;font-weight:500}
+.overlay .omsg{font-size:clamp(18px,2.4vw,46px);color:#e6ede9;margin-top:10px;max-width:24em}
+.overlay.prayer{background:#04120f}
+.overlay.prayer .oname{color:#cdb98a}
+.overlay.prayer .omsg{color:#9db3ab}
+
+/* ---------- phone view (congregation) ---------- */
+@media (max-width:820px), (max-height:520px) and (max-width:1000px){
+  .board{height:auto;min-height:auto}
+  .top{flex-direction:column;align-items:center;text-align:center;padding-top:22px}
+  .clock{font-size:44px}
+  .hero{padding:18px 16px 8px;overflow:visible}
+  .hero .big{font-size:40px}
+  .hero .cd{font-size:34px}
+  .cards{grid-template-columns:1fr;gap:0;padding:0 16px;background:none}
+  .card{display:grid;grid-template-columns:1.3fr 1fr 1fr;align-items:center;text-align:start;border-radius:0;border-width:0 0 1px 0;padding:12px 6px;background:none}
+  .card:first-child{border-top-width:1px}
+  .card.next{background:rgba(201,163,90,.16);border-radius:10px}
+  .card .pn{font-size:24px}
+  .card .at{font-size:22px;margin:0;text-align:center}
+  .card .iqt{font-size:14px;margin:0;text-align:center}
+  .foot{flex-direction:column}
+  .ticker .tt{font-size:15px}
+  .ticker{flex-direction:column;align-items:stretch}
+  .ticker .tl{padding:6px 12px}
+  .qr{display:none}
+  .tools{position:static;opacity:1;justify-content:center;flex-wrap:wrap;padding:6px 16px 22px}
+  .overlay{position:fixed}
+  .phonenote{display:block!important}
+}
+.phonenote{display:none;color:#9db3ab;font-size:12.5px;text-align:center;padding:0 20px 18px}
+.pinbox{position:fixed;inset:0;z-index:20;background:rgba(4,18,15,.75);display:flex;align-items:center;justify-content:center;padding:16px}
+.pincard{background:var(--sheet);color:var(--fg);border-radius:18px;padding:22px;width:min(360px,100%);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.pincard h2{font-family:var(--display);font-size:24px;margin:0 0 14px;color:var(--gold)}
+.pincard input{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:10px;min-height:48px;text-align:center;font-size:24px;letter-spacing:8px;direction:ltr}
+.pincard .actions{justify-content:center;margin-top:14px}
+.sendlist{display:flex;flex-direction:column;gap:8px}
+.sendlist .btn{width:100%;text-decoration:none;color:var(--fg)}
+.sendlist .btn.primary{color:var(--gold-soft)}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;font-size:13px;margin-top:12px}
+/* Keep the site notice (notice.js) visible above full-board states. */
+#board:has(> .nd-notice) .overlay,#board:has(> .nd-notice) .gate{top:clamp(40px,4.2vw,78px)}
+.gate{position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:24px;background:radial-gradient(90% 90% at 50% 35%,var(--green-800),var(--green-950))}
+.gate .gname{font-family:var(--display);font-weight:700;color:var(--gold-soft);font-size:clamp(34px,5vw,84px);line-height:1.15}
+.gate .gicon{width:clamp(56px,6vw,96px);height:auto;color:var(--gold)}
+.gate .gmsg{max-width:34em;font-size:clamp(16px,1.7vw,26px);color:#e6ede9;line-height:1.7}
+.gate .gwarn{max-width:34em;background:rgba(179,38,30,.18);border:1px solid rgba(242,184,181,.6);color:#ffd9d6;border-radius:14px;padding:12px 16px;font-size:clamp(15px,1.5vw,22px);line-height:1.7}
+.gate .gwarn b{display:block;margin-bottom:4px}
+.gate .actions{justify-content:center}
+.gate .btn{background:rgba(6,28,24,.7);border-color:rgba(232,211,162,.4);color:var(--gold-soft)}
+.gate .btn.primary{background:var(--gold);border-color:var(--gold);color:var(--green-950)}
+.admin{max-width:760px;margin:0 auto;padding:0 16px 48px}
+.admin header{background:var(--green-900);color:var(--cream);margin:0 -16px 20px;padding:24px 20px;text-align:center}
+.admin header h1{font-family:var(--display);color:var(--gold-soft);margin:0;font-size:28px}
+.admin header p{margin:6px 0 0;color:#c9d6d0;font-size:14px}
+.admin .kv{display:grid;grid-template-columns:150px 1fr;gap:6px 12px;font-size:14.5px}
+.admin .kv dt{color:var(--muted)}
+.admin .kv dd{margin:0;font-weight:500;overflow-wrap:anywhere}
+.admin table{width:100%;border-collapse:collapse;font-size:14.5px}
+.admin th,.admin td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:start}
+.admin td.n{font-variant-numeric:tabular-nums;direction:ltr;text-align:end}
+.admin .status{border-radius:12px;padding:10px 14px;font-size:14px;margin:10px 0}
+.admin .status.ok{background:rgba(46,139,87,.12);border:1px solid rgba(46,139,87,.5)}
+.admin .status.bad{background:rgba(179,38,30,.1);border:1px solid rgba(179,38,30,.45)}
+.admin .out{width:100%;font-size:12.5px;direction:ltr;min-height:80px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green-900);color:var(--gold-soft);border:1px solid var(--gold);border-radius:12px;padding:10px 16px;z-index:9;font-size:14px}
+</style>
+</head>
+<body>
+
+<!-- Setup -->
+<main class="setup" id="setup" hidden>
+  <header>
+    <h1 data-t="setupTitle"></h1>
+    <p data-t="setupLead"></p>
+    <div class="langbar" id="uiLangs"></div>
+  </header>
+  <form id="form" novalidate>
+    <fieldset>
+      <legend data-t="mosque"></legend>
+      <label class="f" for="fName" data-t="name"></label>
+      <input type="text" id="fName" maxlength="80" autocomplete="off">
+      <label class="f" for="fSub" data-t="sub"></label>
+      <input type="text" id="fSub" maxlength="80" autocomplete="off">
+    </fieldset>
+
+    <fieldset>
+      <legend data-t="location"></legend>
+      <div class="row2">
+        <div><label class="f" for="fCountry" data-t="country"></label><select id="fCountry"></select></div>
+        <div><label class="f" for="fCity" data-t="city"></label><select id="fCity"></select></div>
+      </div>
+      <div class="actions" style="margin-top:10px">
+        <button type="button" class="btn" id="gps"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7.5"/></svg><span data-t="gps"></span></button>
+      </div>
+      <p class="hint" id="gpsMsg" data-t="gpsHint"></p>
+      <label class="f" for="fMethod" data-t="method"></label>
+      <select id="fMethod"></select>
+      <label class="check"><input type="checkbox" id="fHanafi"><span data-t="hanafi"></span></label>
+      <details style="margin-top:12px"><summary data-t="adj"></summary>
+        <p class="hint" data-t="adjHint"></p>
+        <div class="adj" id="adj"></div>
+      </details>
+    </fieldset>
+
+    <fieldset>
+      <legend data-t="iqama"></legend>
+      <div id="iqRows"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend data-t="jumuah"></legend>
+      <div class="row2">
+        <div><label class="f" for="fJum1" data-t="jum1"></label><input type="time" id="fJum1"></div>
+        <div><label class="f" for="fJum2" data-t="jum2"></label><input type="time" id="fJum2"></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend data-t="ann"></legend>
+      <textarea id="fAnn" maxlength="600"></textarea>
+      <p class="hint" data-t="annHint"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend data-t="screen"></legend>
+      <div class="row2">
+        <div><label class="f" for="fLang" data-t="langs"></label><select id="fLang"></select></div>
+        <div><label class="f" for="fLang2" data-t="lang2"></label><select id="fLang2"></select></div>
+      </div>
+      <label class="check"><input type="checkbox" id="fQr" checked><span data-t="qrOpt"></span></label>
+    </fieldset>
+
+    <fieldset>
+      <legend data-t="pinLegend"></legend>
+      <label class="f" for="fPin" data-t="pinLabel"></label>
+      <input type="password" id="fPin" inputmode="numeric" autocomplete="new-password" maxlength="12" pattern="[0-9]*">
+      <p class="hint" id="pinHint" data-t="pinHint"></p>
+      <label class="check" id="pinRemoveRow" hidden><input type="checkbox" id="fPinRemove"><span data-t="pinRemove"></span></label>
+    </fieldset>
+
+    <p class="err" id="formErr" hidden></p>
+    <div class="actions">
+      <button type="submit" class="btn primary" data-t="save"></button>
+      <button type="button" class="btn" id="cancel" data-t="cancel" hidden></button>
+    </div>
+  </form>
+</main>
+
+<!-- Reviewer console (?admin) -->
+<main class="admin" id="admin" hidden></main>
+
+<!-- Display -->
+<div class="board" id="board" hidden>
+  <div class="pattern"></div>
+  <div class="tools" id="tools">
+    <button type="button" id="tQr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v7h-4M14 21h.01"/></svg><span>QR</span></button>
+    <button type="button" id="tShare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg><span data-t="share"></span></button>
+    <button type="button" id="tFull"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span data-t="full"></span></button>
+    <button type="button" id="tEdit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg><span data-t="edit"></span></button>
+  </div>
+  <div class="top">
+    <div>
+      <h1 class="mname" id="mName"></h1>
+      <div class="msub" id="mSub"></div>
+    </div>
+    <div class="clockbox">
+      <div class="clock" id="clock"></div>
+      <div class="dates" id="dates"></div>
+    </div>
+  </div>
+  <div class="hero" id="hero"></div>
+  <div class="cards" id="cards"></div>
+  <div class="foot">
+    <div class="ticker" id="ticker" hidden><span class="tl" data-t="annShort"></span><div class="tw" id="tw"><span class="tt" id="tickerText"></span></div></div>
+    <button type="button" class="qr" id="qr" hidden></button>
+  </div>
+  <p class="phonenote" data-t="addHome"></p>
+  <div class="overlay" id="overlay" hidden></div>
+  <div class="gate" id="gate" hidden></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<div class="qrbig" id="qrBig" hidden><div class="qbox" id="qrBigBox"></div><p data-t="follow"></p><button type="button" class="btn" id="qrClose" data-t="cancel"></button></div>
+<div class="pinbox" id="sendBox" hidden role="dialog" aria-modal="true"></div>
+<div class="pinbox" id="pinBox" hidden role="dialog" aria-modal="true" aria-labelledby="pinTitle">
+  <form class="pincard" id="pinForm">
+    <h2 id="pinTitle" data-t="pinAsk"></h2>
+    <input type="password" id="pinInput" inputmode="numeric" autocomplete="off" maxlength="12" pattern="[0-9]*">
+    <p class="err" id="pinErr" hidden></p>
+    <div class="actions"><button type="submit" class="btn primary" data-t="ok"></button><button type="button" class="btn" id="pinCancel" data-t="cancel"></button></div>
+    <button type="button" class="linkbtn" id="pinForgot" data-t="pinForgot"></button>
+  </form>
+</div>
+
+<script src="../app/adhan.min.js"></script>
+<script src="../app/l10n.js"></script>
+<script src="qrcode.js"></script>
+<!-- Public key of the Nudiya reviewer (made in the review page, ?admin). Without this file every mosque screen shows
+     at once; with it, a screen shows only after its settings were approved (signed) by the reviewer. -->
+<script src="admin-key.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const FARD = ['fajr','dhuhr','asr','maghrib','isha'];
+const SIX = ['fajr','sunrise','dhuhr','asr','maghrib','isha'];
+const ADHAN_METHOD = {umm_al_qura:'UmmAlQura', muslim_world_league:'MuslimWorldLeague', egyptian:'Egyptian', karachi:'Karachi', dubai:'Dubai', kuwait:'Kuwait', qatar:'Qatar', singapore:'Singapore', turkey:'Turkey', north_america:'NorthAmerica', moon_sighting_committee:'MoonsightingCommittee', tehran:'Tehran'};
+const UI_LANGS = ['ar','en','fr','it'];
+const PRAYER_MINUTES = 10; // how long the "prayer in progress" screen stays after the iqama
+
+/* ---------- texts of this page (prayer names come from l10n.js, in all 15 languages) ---------- */
+const MSTR = {
+ar:{ title:'شاشة المسجد', setupTitle:'شاشة المسجد', setupLead:'املأ بيانات مسجدك مرة واحدة. تُعرض على شاشة في المسجد، وتحصل على رابط ورمز QR يتابع به المصلّون مواقيت مسجدهم وإعلاناته على هواتفهم.',
+  mosque:'المسجد', name:'اسم المسجد', sub:'العنوان أو سطر تحت الاسم (اختياري)', location:'الموقع والمواقيت', country:'الدولة', city:'المدينة',
+  gps:'استعمل موقعي الحالي', gpsHint:'الأدقّ أن تضغطه وأنت داخل المسجد.', gpsOk:'تم تحديد موقع المسجد.', gpsErr:'تعذّر تحديد الموقع. اختر الدولة والمدينة.',
+  method:'طريقة الحساب', hanafi:'العصر على المذهب الحنفي', adj:'تعديل وقت الأذان', adjHint:'بالدقائق، إن كان مسجدك يؤذّن قبل الوقت المحسوب (−) أو بعده (+).',
+  iqama:'الإقامة', iqAfter:'بعد الأذان بـ (دقيقة)', iqFixed:'وقت ثابت', iqNone:'بدون',
+  jumuah:'صلاة الجمعة', jum1:'وقت الخطبة', jum2:'خطبة ثانية (اختياري)',
+  ann:'إعلانات المسجد', annHint:'إعلان في كل سطر، مثل: درس بعد العشاء يوم الخميس. تمرّ في أسفل الشاشة.', annShort:'إعلانات',
+  pinLegend:'حماية الإعدادات', pinLabel:'رمز سري للإعدادات (4 أرقام أو أكثر، اختياري)', pinHint:'يمنع من يمرّ أمام شاشة المسجد من تغيير الإعدادات. يُطلب عند الضغط على «الإعداد»، على أي جهاز فُتح عليه رابط المسجد.', pinKeep:'اتركه فارغًا لإبقاء الرمز الحالي.', pinRemove:'إزالة الرمز', pinShort:'الرمز 4 أرقام على الأقل.', pinAsk:'أدخل رمز الإعدادات', pinWrong:'الرمز غير صحيح.', pinWait:'محاولات كثيرة. انتظر 30 ثانية.', pinForgot:'نسيت الرمز؟', pinForgotMsg:'لا يمكن استرجاع الرمز. هل تريد مسح بيانات المسجد من هذا الجهاز والبدء من جديد؟', ok:'دخول',
+  gPending:'شاشة المسجد بانتظار الموافقة', gPendingMsg:'تُراجع إدارة «نودي للصلاة» بيانات كل مسجد قبل عرض شاشته، للتأكد من صحة الموقع والمواقيت. أرسل طلب المراجعة، وستصلك رسالة فيها رابط الشاشة بعد الموافقة.', gSend:'إرسال طلب المراجعة', gRejected:'لم يتم القبول', gRejectedMsg:'لم يتم القبول لعدم المطابقة. الرجاء التثبت من صحة إعدادات المسجد ثم إعادة المحاولة.', gReason:'ملاحظة المراجِع:', gReqText:'طلب مراجعة شاشة مسجد', gResent:'أُعدّ طلب المراجعة. أرسله إلى إدارة «نودي للصلاة».',
+  sendMail:'تطبيق البريد', copyLink:'نسخ الرابط',
+  screen:'العرض', langs:'لغة العرض', lang2:'لغة ثانية تحت الأسماء', none:'بدون', qrOpt:'إظهار رمز QR على الشاشة ليتابع المصلّون المسجد',
+  save:'حفظ وعرض الشاشة', cancel:'إلغاء', noName:'اكتب اسم المسجد.', noCity:'اختر الدولة والمدينة.',
+  adhan:'الأذان', iqamaW:'الإقامة', next:'الصلاة القادمة', adhanIn:'الأذان بعد', toIqama:'الإقامة بعد', khutbah:'الخطبة',
+  lastMin:'الدقيقة الأخيرة قبل أذان', prayerNow:'الصلاة قائمة', prayerMsg:'سوّوا صفوفكم، وأغلقوا هواتفكم', adhanNow:'حان وقت أذان',
+  follow:'امسح الرمز لتتابع مسجدنا', share:'مشاركة الرابط', full:'ملء الشاشة', edit:'الإعداد', copied:'نُسخ رابط المسجد',
+  linkNote:'الرابط يحمل بيانات المسجد كما هي الآن.', addHome:'في تطبيق «نودي للصلاة»: المزيد ← مسجدي ← متابعة مسجد، ثم امسح رمز QR، فتصلك إشعارات الإقامة. أو أضف هذه الصفحة إلى شاشة هاتفك من زر المشاركة ← «إضافة إلى الشاشة الرئيسية».', sec:'ثانية', min:'دقيقة', h:'س', m:'د' },
+en:{ title:'Mosque screen', setupTitle:'Mosque screen', setupLead:'Fill in your mosque once. It shows on a screen in the mosque, and you get a link and a QR code so worshippers can follow the mosque’s times and announcements on their phones.',
+  mosque:'Mosque', name:'Mosque name', sub:'Address or a line under the name (optional)', location:'Place and times', country:'Country', city:'City',
+  gps:'Use my current location', gpsHint:'Most accurate when you press it inside the mosque.', gpsOk:'Mosque location set.', gpsErr:'Could not get the location. Choose the country and city.',
+  method:'Calculation method', hanafi:'Asr by the Hanafi school', adj:'Adjust adhan times', adjHint:'In minutes, if your mosque calls the adhan before (−) or after (+) the calculated time.',
+  iqama:'Iqama', iqAfter:'After the adhan (minutes)', iqFixed:'Fixed time', iqNone:'None',
+  jumuah:'Friday prayer', jum1:'Khutbah time', jum2:'Second khutbah (optional)',
+  ann:'Mosque announcements', annHint:'One announcement per line, e.g. Lesson after Isha on Thursday. They scroll along the bottom of the screen.', annShort:'News',
+  pinLegend:'Protect the settings', pinLabel:'Settings PIN (4 digits or more, optional)', pinHint:'Stops passers-by at the mosque screen from changing the settings. It is asked when pressing “Settings”, on any device that opened the mosque link.', pinKeep:'Leave empty to keep the current PIN.', pinRemove:'Remove the PIN', pinShort:'The PIN needs at least 4 digits.', pinAsk:'Enter the settings PIN', pinWrong:'Wrong PIN.', pinWait:'Too many attempts. Wait 30 seconds.', pinForgot:'Forgot the PIN?', pinForgotMsg:'The PIN cannot be recovered. Erase the mosque from this device and start again?', ok:'Enter',
+  gPending:'The mosque screen is awaiting approval', gPendingMsg:'The Nudiya team checks every mosque before its screen is shown, to be sure the location and times are right. Send the review request; you will receive a message with the screen link once it is approved.', gSend:'Send the review request', gRejected:'Not approved', gRejectedMsg:'Not approved because the details do not match. Please check the mosque settings, then try again.', gReason:'Reviewer’s note:', gReqText:'Review request for the mosque screen of', gResent:'The review request is ready. Send it to the Nudiya team.',
+  sendMail:'E-mail app', copyLink:'Copy the link',
+  screen:'Display', langs:'Display language', lang2:'Second language under the names', none:'None', qrOpt:'Show a QR code on the screen so worshippers can follow the mosque',
+  save:'Save and show the screen', cancel:'Cancel', noName:'Enter the mosque name.', noCity:'Choose the country and city.',
+  adhan:'Adhan', iqamaW:'Iqama', next:'Next prayer', adhanIn:'Adhan in', toIqama:'Iqama in', khutbah:'Khutbah',
+  lastMin:'Last minute before the adhan of', prayerNow:'Prayer in progress', prayerMsg:'Straighten the rows and switch off your phones', adhanNow:'Time for the adhan of',
+  follow:'Scan to follow our mosque', share:'Share link', full:'Full screen', edit:'Settings', copied:'Mosque link copied',
+  linkNote:'The link carries the mosque details as they are now.', addHome:'In the Nudiya app: More → My mosque → Follow a mosque, then scan the QR code to get iqama notifications. Or add this page to your home screen: Share → “Add to Home Screen”.', sec:'seconds', min:'min', h:'h', m:'m' },
+fr:{ title:'Écran de la mosquée', setupTitle:'Écran de la mosquée', setupLead:'Renseignez votre mosquée une seule fois. Elle s’affiche sur un écran dans la mosquée, et vous obtenez un lien et un QR code pour que les fidèles suivent les horaires et annonces sur leur téléphone.',
+  mosque:'Mosquée', name:'Nom de la mosquée', sub:'Adresse ou ligne sous le nom (facultatif)', location:'Lieu et horaires', country:'Pays', city:'Ville',
+  gps:'Utiliser ma position', gpsHint:'Plus précis si vous appuyez dans la mosquée.', gpsOk:'Position de la mosquée enregistrée.', gpsErr:'Position introuvable. Choisissez le pays et la ville.',
+  method:'Méthode de calcul', hanafi:'Asr selon l’école hanafite', adj:'Ajuster l’heure de l’adhan', adjHint:'En minutes, si votre mosquée appelle avant (−) ou après (+) l’heure calculée.',
+  iqama:'Iqama', iqAfter:'Après l’adhan (minutes)', iqFixed:'Heure fixe', iqNone:'Aucune',
+  jumuah:'Prière du vendredi', jum1:'Heure du prêche', jum2:'Second prêche (facultatif)',
+  ann:'Annonces de la mosquée', annHint:'Une annonce par ligne, p. ex. Cours après Isha le jeudi. Elles défilent en bas de l’écran.', annShort:'Annonces',
+  pinLegend:'Protéger les réglages', pinLabel:'Code des réglages (4 chiffres ou plus, facultatif)', pinHint:'Empêche les passants devant l’écran de modifier les réglages. Il est demandé en appuyant sur « Réglages », sur tout appareil ayant ouvert le lien de la mosquée.', pinKeep:'Laissez vide pour garder le code actuel.', pinRemove:'Supprimer le code', pinShort:'Le code doit avoir au moins 4 chiffres.', pinAsk:'Saisissez le code des réglages', pinWrong:'Code incorrect.', pinWait:'Trop de tentatives. Attendez 30 secondes.', pinForgot:'Code oublié ?', pinForgotMsg:'Le code ne peut pas être récupéré. Effacer la mosquée de cet appareil et recommencer ?', ok:'Entrer',
+  gPending:'L’écran de la mosquée attend l’approbation', gPendingMsg:'L’équipe Nudiya vérifie chaque mosquée avant d’afficher son écran, pour s’assurer du lieu et des horaires. Envoyez la demande ; vous recevrez un message avec le lien de l’écran une fois approuvé.', gSend:'Envoyer la demande', gRejected:'Non approuvé', gRejectedMsg:'Non approuvé car les informations ne correspondent pas. Vérifiez les réglages de la mosquée puis réessayez.', gReason:'Note du vérificateur :', gReqText:'Demande de vérification de l’écran de la mosquée', gResent:'La demande est prête. Envoyez-la à l’équipe Nudiya.',
+  sendMail:'Application e-mail', copyLink:'Copier le lien',
+  screen:'Affichage', langs:'Langue d’affichage', lang2:'Seconde langue sous les noms', none:'Aucune', qrOpt:'Afficher un QR code pour suivre la mosquée',
+  save:'Enregistrer et afficher', cancel:'Annuler', noName:'Saisissez le nom de la mosquée.', noCity:'Choisissez le pays et la ville.',
+  adhan:'Adhan', iqamaW:'Iqama', next:'Prochaine prière', adhanIn:'Adhan dans', toIqama:'Iqama dans', khutbah:'Prêche',
+  lastMin:'Dernière minute avant l’adhan de', prayerNow:'Prière en cours', prayerMsg:'Alignez les rangs et éteignez vos téléphones', adhanNow:'C’est l’heure de l’adhan de',
+  follow:'Scannez pour suivre notre mosquée', share:'Partager le lien', full:'Plein écran', edit:'Réglages', copied:'Lien de la mosquée copié',
+  linkNote:'Le lien contient les informations de la mosquée telles qu’elles sont maintenant.', addHome:'Dans l’application Nudiya : Plus → Ma mosquée → Suivre une mosquée, puis scannez le QR code pour être averti de l’iqama. Ou ajoutez cette page à l’écran d’accueil : Partager → « Sur l’écran d’accueil ».', sec:'secondes', min:'min', h:'h', m:'min' },
+it:{ title:'Schermo della moschea', setupTitle:'Schermo della moschea', setupLead:'Inserisci i dati della tua moschea una volta sola. Vengono mostrati su uno schermo in moschea, e ottieni un link e un codice QR con cui i fedeli seguono orari e avvisi sul telefono.',
+  mosque:'Moschea', name:'Nome della moschea', sub:'Indirizzo o riga sotto il nome (facoltativo)', location:'Luogo e orari', country:'Paese', city:'Città',
+  gps:'Usa la mia posizione', gpsHint:'Più preciso se lo premi dentro la moschea.', gpsOk:'Posizione della moschea impostata.', gpsErr:'Posizione non disponibile. Scegli paese e città.',
+  method:'Metodo di calcolo', hanafi:'Asr secondo la scuola hanafita', adj:'Correggi l’orario dell’adhan', adjHint:'In minuti, se la tua moschea chiama prima (−) o dopo (+) l’orario calcolato.',
+  iqama:'Iqama', iqAfter:'Dopo l’adhan (minuti)', iqFixed:'Orario fisso', iqNone:'Nessuna',
+  jumuah:'Preghiera del venerdì', jum1:'Orario della khutba', jum2:'Seconda khutba (facoltativa)',
+  ann:'Avvisi della moschea', annHint:'Un avviso per riga, es. Lezione dopo Isha il giovedì. Scorrono in fondo allo schermo.', annShort:'Avvisi',
+  pinLegend:'Proteggi le impostazioni', pinLabel:'PIN delle impostazioni (4 cifre o più, facoltativo)', pinHint:'Impedisce a chi passa davanti allo schermo di cambiare le impostazioni. Viene chiesto premendo «Impostazioni», su ogni dispositivo che ha aperto il link della moschea.', pinKeep:'Lascia vuoto per mantenere il PIN attuale.', pinRemove:'Rimuovi il PIN', pinShort:'Il PIN deve avere almeno 4 cifre.', pinAsk:'Inserisci il PIN delle impostazioni', pinWrong:'PIN errato.', pinWait:'Troppi tentativi. Attendi 30 secondi.', pinForgot:'PIN dimenticato?', pinForgotMsg:'Il PIN non si può recuperare. Cancellare la moschea da questo dispositivo e ricominciare?', ok:'Entra',
+  gPending:'Lo schermo della moschea attende l’approvazione', gPendingMsg:'Il team di Nudiya controlla ogni moschea prima di mostrarne lo schermo, per verificare luogo e orari. Invia la richiesta; riceverai un messaggio con il link dello schermo dopo l’approvazione.', gSend:'Invia la richiesta di verifica', gRejected:'Non approvato', gRejectedMsg:'Non approvato perché i dati non corrispondono. Controlla le impostazioni della moschea e riprova.', gReason:'Nota del revisore:', gReqText:'Richiesta di verifica dello schermo della moschea', gResent:'La richiesta è pronta. Inviala al team di Nudiya.',
+  sendMail:'App di posta', copyLink:'Copia il link',
+  screen:'Schermo', langs:'Lingua dello schermo', lang2:'Seconda lingua sotto i nomi', none:'Nessuna', qrOpt:'Mostra un codice QR per seguire la moschea',
+  save:'Salva e mostra lo schermo', cancel:'Annulla', noName:'Scrivi il nome della moschea.', noCity:'Scegli paese e città.',
+  adhan:'Adhan', iqamaW:'Iqama', next:'Prossima preghiera', adhanIn:'Adhan tra', toIqama:'Iqama tra', khutbah:'Khutba',
+  lastMin:'Ultimo minuto prima dell’adhan di', prayerNow:'Preghiera in corso', prayerMsg:'Allineate le file e spegnete i telefoni', adhanNow:'È l’ora dell’adhan di',
+  follow:'Inquadra per seguire la nostra moschea', share:'Condividi il link', full:'Schermo intero', edit:'Impostazioni', copied:'Link della moschea copiato',
+  linkNote:'Il link contiene i dati della moschea così come sono ora.', addHome:'Nell’app Nudiya: Altro → La mia moschea → Segui una moschea, poi inquadra il codice QR per gli avvisi dell’iqama. Oppure aggiungi questa pagina alla Home: Condividi → «Aggiungi alla schermata Home».', sec:'secondi', min:'min', h:'h', m:'min' },
+};
+const UI_NAMES = {ar:'العربية', en:'English', fr:'Français', it:'Italiano'};
+
+/* ---------- state ---------- */
+const DEFAULT = { v:1, name:'', sub:'', city:null, method:'muslim_world_league', hanafi:false,
+  adj:{fajr:0,dhuhr:0,asr:0,maghrib:0,isha:0},
+  iq:{fajr:20,dhuhr:15,asr:15,maghrib:5,isha:15}, jum:['',''], ann:[], lang:'ar', lang2:'', qr:true };
+let C = null;          // the mosque shown
+let ui = 'ar';         // language of the setup form before a mosque exists
+const L = () => (C && C.lang) || ui;
+const tm = k => (MSTR[L()] || MSTR.en)[k] ?? MSTR.en[k] ?? k;
+const pname = (k, lang) => (STR[lang] && STR[lang][k]) || STR.en[k] || k;
+const isRtl = l => l === 'ar' || l === 'ur';
+
+function loadLocal(){ try { return JSON.parse(localStorage.getItem('nudiya-mosque') || 'null'); } catch (e) { return null; } }
+function saveLocal(){ try { localStorage.setItem('nudiya-mosque', JSON.stringify(C)); } catch (e) {} }
+
+/* ---------- link: the whole setup, compressed, after #m= ---------- */
+const b64u = bytes => { let s=''; bytes.forEach(b => s += String.fromCharCode(b)); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); };
+const unb64u = str => { const s = atob(str.replace(/-/g,'+').replace(/_/g,'/')); return Uint8Array.from(s, ch => ch.charCodeAt(0)); };
+async function encode(obj){
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  if ('CompressionStream' in window) {
+    try { const out = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer()); return 'z' + b64u(out); } catch (e) {}
+  }
+  return 'j' + b64u(bytes);
+}
+async function decode(str){
+  const kind = str[0], bytes = unb64u(str.slice(1));
+  if (kind === 'z') return JSON.parse(new TextDecoder().decode(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+// Only what differs from the defaults goes into the link: a shorter link makes a coarser, easier QR code.
+const shareCfg = () => {
+  const {v,name,sub,city,method,hanafi,adj,iq,jum,ann,lang,lang2,pin} = C;
+  const o = {v,name,city,method,iq,lang};
+  if (sub) o.sub = sub;
+  if (hanafi) o.hanafi = true;
+  if (adj && FARD.some(k => adj[k])) o.adj = adj;
+  if (jum && jum.some(Boolean)) o.jum = jum;
+  if (ann && ann.length) o.ann = ann;
+  if (lang2) o.lang2 = lang2;
+  if (pin) o.pin = pin;
+  if (C.ap) o.ap = C.ap;
+  if (C.rj) o.rj = C.rj;
+  if (lang !== 'ar' && city) o.city = {cc:city.cc, n:city.n, lat:city.lat, lng:city.lng, tz:city.tz};
+  return o;
+};
+async function shareUrl(){ return location.origin + location.pathname + '#m=' + await encode(shareCfg()); }
+
+/* ---------- time ---------- */
+function ymdIn(tz, instant = new Date()){
+  try { const p = new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(instant);
+    const g = k => +p.find(x => x.type === k).value; return [g('year'), g('month'), g('day')]; }
+  catch (e) { return [instant.getFullYear(), instant.getMonth()+1, instant.getDate()]; }
+}
+function tzOffsetMs(tz, instant){
+  try { const p = new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).formatToParts(instant);
+    const g = k => +p.find(x => x.type === k).value;
+    return Date.UTC(g('year'), g('month')-1, g('day'), g('hour') % 24, g('minute'), g('second')) - Math.floor(instant.getTime()/1000)*1000; }
+  catch (e) { return -instant.getTimezoneOffset() * 60000; }
+}
+/** The instant when the wall clock in [tz] shows y-m-d hh:mm. */
+function zoned(y, m, d, hh, mm, tz){
+  let t = Date.UTC(y, m-1, d, hh, mm);
+  for (let i = 0; i < 2; i++) t = Date.UTC(y, m-1, d, hh, mm) - tzOffsetMs(tz, new Date(t));
+  return new Date(t);
+}
+const tz = () => C.city.tz;
+const hm = d => { try { return new Intl.DateTimeFormat('en-GB',{timeZone:tz(),hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(d); } catch (e) { return d.toTimeString().slice(0,5); } };
+function day(offset = 0){
+  const [y, m, d] = ymdIn(tz()); const date = new Date(y, m-1, d + offset);
+  const params = adhan.CalculationMethod[ADHAN_METHOD[C.method] || 'MuslimWorldLeague']();
+  params.madhab = C.hanafi ? adhan.Madhab.Hanafi : adhan.Madhab.Shafi;
+  if (Math.abs(C.city.lat) > 48) params.highLatitudeRule = adhan.HighLatitudeRule.TwilightAngle;
+  for (const k of FARD) params.adjustments[k] = +(C.adj && C.adj[k]) || 0;
+  const pt = new adhan.PrayerTimes(new adhan.Coordinates(C.city.lat, C.city.lng), date, params);
+  const [yy, mm, dd] = [date.getFullYear(), date.getMonth()+1, date.getDate()];
+  const friday = new Date(Date.UTC(yy, mm-1, dd)).getUTCDay() === 5;
+  const out = { friday, ymd:[yy, mm, dd] };
+  for (const k of SIX) out[k] = { adhan: pt[k] };
+  for (const k of FARD) {
+    const a = pt[k], spec = C.iq[k];
+    let iq = null;
+    if (k === 'dhuhr' && friday && C.jum[0]) { const [h, mi] = C.jum[0].split(':').map(Number); iq = zoned(yy, mm, dd, h, mi, tz()); }
+    else if (typeof spec === 'number' && spec > 0) iq = new Date(a.getTime() + spec * 60000);
+    else if (typeof spec === 'string' && /^\d\d:\d\d$/.test(spec)) { const [h, mi] = spec.split(':').map(Number); iq = zoned(yy, mm, dd, h, mi, tz()); if (iq < a) iq = a; }
+    out[k].iqama = iq;
+  }
+  return out;
+}
+
+/* ---------- display ---------- */
+const dualName = (k, friday) => {
+  const key = (k === 'dhuhr' && friday) ? 'jumuah' : k;
+  return { main: pname(key, C.lang), second: C.lang2 && C.lang2 !== C.lang ? pname(key, C.lang2) : '' };
+};
+function datesText(now){
+  const loc = C.lang === 'ar' ? 'ar-u-nu-latn' : C.lang;
+  let g = '', h = '';
+  try { g = new Intl.DateTimeFormat(loc, {timeZone:tz(), weekday:'long', day:'numeric', month:'long', year:'numeric'}).format(now); } catch (e) {}
+  try { h = new Intl.DateTimeFormat(loc + (loc.includes('-u-') ? '-ca-islamic-umalqura' : '-u-ca-islamic-umalqura'), {timeZone:tz(), day:'numeric', month:'long', year:'numeric'}).format(now); } catch (e) {}
+  return [g, h].filter(Boolean).join('  ·  ');
+}
+function clockText(now){
+  try { const p = new Intl.DateTimeFormat('en-GB',{timeZone:tz(),hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(now);
+    const g = k => p.find(x => x.type === k).value; return `${g('hour')}:${g('minute')}<small>${g('second')}</small>`; }
+  catch (e) { return now.toTimeString().slice(0,8); }
+}
+const pad = n => String(n).padStart(2, '0');
+function countdown(ms){
+  const s = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+  return h ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+}
+
+let today = null, todayKey = '', tomorrow = null, lastCardsKey = '';
+function refreshDays(){
+  const key = ymdIn(tz()).join('-') + JSON.stringify([C.method, C.hanafi, C.adj, C.iq, C.jum]);
+  if (key === todayKey) return;
+  todayKey = key; today = day(0); tomorrow = day(1); lastCardsKey = '';
+}
+function nextAdhan(now){
+  for (const k of FARD) if (today[k].adhan > now) return { k, at: today[k].adhan, d: today };
+  return { k: 'fajr', at: tomorrow.fajr.adhan, d: tomorrow };
+}
+/** What the whole board shows now: last minute, waiting for iqama, prayer in progress, or normal. */
+function stateAt(now){
+  for (const d of [today, tomorrow]) for (const k of FARD) {
+    const a = d[k].adhan, iq = d[k].iqama;
+    if (now >= a - 60000 && now < a) return { s:'last', k, d, until:a };
+    if (iq && now >= a && now < iq) return { s:'iqama', k, d, from:a, until:iq };
+    if (!iq && now >= a && now < a.getTime() + 60000) return { s:'adhan', k, d };
+    if (iq && now >= iq && now < iq.getTime() + PRAYER_MINUTES * 60000) return { s:'prayer', k, d };
+  }
+  return { s:'normal' };
+}
+function renderCards(nextK, nextD){
+  const key = nextK + (nextD === today ? 't' : 'n') + C.lang + C.lang2;
+  if (key === lastCardsKey) return; lastCardsKey = key;
+  $('cards').innerHTML = SIX.map(k => {
+    const x = today[k], n = dualName(k, today.friday);
+    let iqLine = '';
+    if (k === 'dhuhr' && today.friday && C.jum[0]) iqLine = `${esc(tm('khutbah'))} <b>${esc(C.jum.filter(Boolean).join(' · '))}</b>`;
+    else if (x.iqama) iqLine = `${esc(tm('iqamaW'))} <b>${esc(hm(x.iqama))}</b>`;
+    const isNext = nextD === today && k === nextK;
+    return `<div class="card${isNext ? ' next' : ''}"><div><div class="pn">${esc(n.main)}</div>${n.second ? `<div class="pn2">${esc(n.second)}</div>` : ''}</div>
+      <div class="at">${esc(hm(x.adhan))}</div><div class="iqt">${iqLine || '&nbsp;'}</div></div>`;
+  }).join('');
+}
+const RING = (frac, label, small) => `<div class="ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" fill="none" stroke="rgba(232,211,162,.15)" stroke-width="6"/>
+  <circle cx="60" cy="60" r="54" fill="none" stroke="#c9a35a" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(2*Math.PI*54).toFixed(1)}" stroke-dashoffset="${((1-frac)*2*Math.PI*54).toFixed(1)}"/></svg>
+  <div class="num">${label}${small ? `<small>${esc(small)}</small>` : ''}</div></div>`;
+/* Announcements scroll in the direction of their own script (Arabic right→left, Latin left→right). */
+const phoneView = matchMedia('(max-width:820px), (max-height:520px) and (max-width:1000px)');
+function startTicker(){
+  const tw = $('tw'), tt = $('tickerText'), box = $('ticker');
+  tt.getAnimations().forEach(a => a.cancel());
+  const text = tt.textContent, rtlText = /[\u0590-\u08FF\uFB50-\uFEFF]/.test(text.trim()[0] || '');
+  tt.dir = rtlText ? 'rtl' : 'ltr';
+  const still = phoneView.matches || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  box.classList.toggle('static', still);
+  if (still || box.hidden) return;
+  const W = tw.clientWidth, w = tt.scrollWidth;
+  const from = rtlText ? -w : W, to = rtlText ? W : -w;
+  tt.animate([{ transform: `translateX(${from}px)` }, { transform: `translateX(${to}px)` }], { duration: (W + w) / 90 * 1000, iterations: Infinity });
+}
+let resizeT = null;
+window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (C && !$('board').hidden) { lastCardsKey = ''; startTicker(); } }, 300); });
+
+/* Open mosque screens reload once a day, 45 minutes after the Isha prayer (online only, never within six hours
+   of the last load), so updates of this page reach them without anyone touching the screen. */
+const LOADED_AT = Date.now();
+function nightlyReload(now){
+  if (Date.now() - LOADED_AT < 6 * 3600e3 || !navigator.onLine || !$('setup').hidden || $('board').hidden) return;
+  const isha = today.isha, after = (isha.iqama || isha.adhan).getTime() + (PRAYER_MINUTES + 35) * 60000;
+  if (now >= after && now - after < 3 * 3600e3) location.reload();
+}
+function tick(){
+  if (!C) return;
+  const now = new Date();
+  refreshDays();
+  nightlyReload(now);
+  $('clock').innerHTML = clockText(now);
+  $('dates').textContent = datesText(now);
+  const nx = nextAdhan(now);
+  renderCards(nx.k, nx.d);
+  const n = dualName(nx.k, nx.d.friday);
+  $('hero').innerHTML = `<div class="lbl">${esc(tm('next'))}</div><div class="big">${esc(n.main)}</div>${n.second ? `<div class="sec">${esc(n.second)}</div>` : ''}
+    <div class="sec" style="margin-top:6px">${esc(tm('adhanIn'))}</div><div class="cd">${countdown(nx.at - now)}</div>`;
+  const st = stateAt(now), ov = $('overlay');
+  if (st.s === 'normal') { ov.hidden = true; ov.className = 'overlay'; return; }
+  const nm = dualName(st.k, st.d.friday);
+  const head = `<div class="ohead"><b>${esc(C.name)}</b>  ·  <span dir="ltr">${esc(hm(now))}</span></div>`;
+  ov.hidden = false;
+  if (st.s === 'last') {
+    const left = Math.ceil((st.until - now) / 1000);
+    ov.className = 'overlay';
+    ov.innerHTML = head + `<div class="olbl">${esc(tm('lastMin'))}</div><div class="oname">${esc(nm.main)}</div>${RING(left / 60, String(left), tm('sec'))}`;
+  } else if (st.s === 'adhan') {
+    ov.className = 'overlay';
+    ov.innerHTML = head + `<div class="olbl">${esc(tm('adhanNow'))}</div><div class="oname">${esc(nm.main)}</div>${nm.second ? `<div class="omsg">${esc(nm.second)}</div>` : ''}`;
+  } else if (st.s === 'iqama') {
+    const total = st.until - st.from, left = st.until - now;
+    ov.className = 'overlay';
+    ov.innerHTML = head + `<div class="oname">${esc(nm.main)}</div><div class="olbl">${esc(tm('toIqama'))}</div>${RING(left / total, countdown(left), '')}`;
+  } else {
+    ov.className = 'overlay prayer';
+    ov.innerHTML = head + `<div class="oname">${esc(tm('prayerNow'))}</div><div class="omsg">${esc(tm('prayerMsg'))}</div>`;
+  }
+}
+async function renderBoard(){
+  document.documentElement.lang = C.lang; document.documentElement.dir = isRtl(C.lang) ? 'rtl' : 'ltr';
+  document.title = `${C.name} · ${tm('title')}`;
+  applyTexts();
+  $('mName').textContent = C.name;
+  $('mSub').textContent = C.sub || '';
+  const ann = (C.ann || []).filter(Boolean);
+  $('ticker').hidden = !ann.length;
+  $('tickerText').textContent = ann.join('   ✦   ');
+  startTicker();
+  if (C.qr !== false) {
+    try { $('qr').innerHTML = await qrSvg() + `<span>${esc(tm('follow'))}</span>`; $('qr').hidden = false; }
+    catch (e) { $('qr').hidden = true; }
+  } else $('qr').hidden = true;
+  todayKey = ''; tick();
+}
+
+/* QR of the mosque link. Low error correction and the standard 4-module quiet zone keep the code as coarse
+   as possible, so phone cameras read it from across the room; tapping it shows it full screen. */
+async function qrSvg(){
+  const q = qrcode(0, 'L'); q.addData(await shareUrl(), 'Byte'); q.make();
+  return q.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
+}
+async function showBigQr(){
+  $('qrBigBox').innerHTML = await qrSvg();
+  document.querySelectorAll('#qrBig [data-t]').forEach(el => el.textContent = tm(el.dataset.t));
+  $('qrBig').hidden = false;
+}
+$('qr').onclick = showBigQr;
+$('tQr').onclick = showBigQr;
+$('qrClose').onclick = () => { $('qrBig').hidden = true; };
+$('qrBig').addEventListener('click', e => { if (e.target === $('qrBig')) $('qrBig').hidden = true; });
+
+/* ---------- settings PIN ----------
+   Only a salted, slow hash (PBKDF2) is kept, in this device and in the mosque link. It keeps passers-by out of the
+   settings of the mosque screen; it is not a lock on the data itself (the times are public anyway). */
+// Short salt and hash keep the link (and so the QR code) small; [bits] reads PINs saved by the first version (256).
+async function pinHash(pin, saltB64, bits = 128){
+  const salt = saltB64 ? unb64u(saltB64) : crypto.getRandomValues(new Uint8Array(8));
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const out = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 150000 }, key, bits);
+  return { s: b64u(salt), h: b64u(new Uint8Array(out)) };
+}
+let pinFails = 0, pinBlockedUntil = 0;
+function askPin(){
+  $('pinInput').value = ''; $('pinErr').hidden = true; $('pinBox').hidden = false;
+  document.querySelectorAll('#pinBox [data-t]').forEach(el => el.textContent = tm(el.dataset.t));
+  setTimeout(() => $('pinInput').focus(), 50);
+}
+$('pinForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = $('pinErr');
+  if (Date.now() < pinBlockedUntil) { err.textContent = tm('pinWait'); err.hidden = false; return; }
+  const h = await pinHash($('pinInput').value.trim(), C.pin.s, C.pin.h.length > 30 ? 256 : 128);
+  if (h.h === C.pin.h) { pinFails = 0; $('pinBox').hidden = true; openSetup(); return; }
+  pinFails++; $('pinInput').value = '';
+  if (pinFails >= 5) { pinFails = 0; pinBlockedUntil = Date.now() + 30000; err.textContent = tm('pinWait'); }
+  else err.textContent = tm('pinWrong');
+  err.hidden = false;
+});
+$('pinCancel').onclick = () => { $('pinBox').hidden = true; };
+$('pinForgot').onclick = () => {
+  if (!confirm(tm('pinForgotMsg'))) return;
+  try { localStorage.removeItem('nudiya-mosque'); } catch (e) {}
+  location.replace(location.pathname);
+};
+
+/* ---------- setup form ---------- */
+let COUNTRIES = null;
+async function countries(){
+  if (COUNTRIES) return COUNTRIES;
+  const j = await (await fetch('../app/cities.json')).json();
+  COUNTRIES = Object.entries(j.countries).map(([cc, v]) => ({ cc, names: v.n, cities: v.c.map(c => ({ cc, n: c[0], lat: c[1], lng: c[2], tz: j.tz[c[3]], ar: c[4] })) }));
+  return COUNTRIES;
+}
+const cname = c => c.names[L()] || c.names.en || c.cc;
+const cityName = c => (L() === 'ar' && c.ar) ? c.ar : c.n;
+let draftCity = null;
+function fillCities(cc, selectName){
+  const c = COUNTRIES.find(x => x.cc === cc);
+  const list = c ? [...c.cities].sort((a, b) => cityName(a).localeCompare(cityName(b), L())) : [];
+  $('fCity').innerHTML = `<option value="">—</option>` + list.map(ci => `<option value="${esc(ci.n)}"${ci.n === selectName ? ' selected' : ''}>${esc(cityName(ci))}</option>`).join('');
+}
+async function openSetup(){
+  const d = C ? JSON.parse(JSON.stringify(C)) : JSON.parse(JSON.stringify(DEFAULT));
+  if (!C) d.lang = ui;
+  draftCity = d.city;
+  $('board').hidden = true; $('setup').hidden = false; $('cancel').hidden = !C;
+  document.documentElement.lang = L(); document.documentElement.dir = isRtl(L()) ? 'rtl' : 'ltr';
+  applyTexts();
+  $('uiLangs').innerHTML = C ? '' : UI_LANGS.map(l => `<button type="button" data-l="${l}" aria-pressed="${l === ui}">${UI_NAMES[l]}</button>`).join('');
+  $('fName').value = d.name; $('fSub').value = d.sub || '';
+  $('fMethod').innerHTML = Object.entries(METHODS).map(([k, v]) => `<option value="${k}"${k === d.method ? ' selected' : ''}>${esc(L() === 'ar' ? v[0] : v[1])}</option>`).join('');
+  $('fHanafi').checked = !!d.hanafi;
+  $('adj').innerHTML = FARD.map(k => `<div><label for="adj_${k}">${esc(pname(k, L()))}</label><input type="number" id="adj_${k}" min="-30" max="30" step="1" value="${+(d.adj && d.adj[k]) || 0}"></div>`).join('');
+  $('iqRows').innerHTML = FARD.map(k => {
+    const spec = d.iq[k], mode = typeof spec === 'string' && spec ? 'fixed' : (spec ? 'after' : 'none');
+    return `<div class="iq"><b>${esc(pname(k, L()))}</b>
+      <select id="iqm_${k}" aria-label="${esc(pname(k, L()))}"><option value="after"${mode === 'after' ? ' selected' : ''}>${esc(tm('iqAfter'))}</option><option value="fixed"${mode === 'fixed' ? ' selected' : ''}>${esc(tm('iqFixed'))}</option><option value="none"${mode === 'none' ? ' selected' : ''}>${esc(tm('iqNone'))}</option></select>
+      <input id="iqv_${k}" ${mode === 'fixed' ? `type="time" value="${esc(spec)}"` : `type="number" min="1" max="90" value="${mode === 'after' ? spec : 15}"`}${mode === 'none' ? ' hidden' : ''} aria-label="${esc(pname(k, L()))}"></div>`;
+  }).join('');
+  $('fJum1').value = d.jum[0] || ''; $('fJum2').value = d.jum[1] || '';
+  $('fAnn').value = (d.ann || []).join('\n');
+  const langOpts = sel => LANGS.map(l => `<option value="${l}"${l === sel ? ' selected' : ''}>${esc(LANG_NAMES[l] || l)}</option>`).join('');
+  $('fLang').innerHTML = UI_LANGS.map(l => `<option value="${l}"${l === d.lang ? ' selected' : ''}>${UI_NAMES[l]}</option>`).join('');
+  $('fLang2').innerHTML = `<option value="">${esc(tm('none'))}</option>` + langOpts(d.lang2);
+  $('fQr').checked = d.qr !== false;
+  $('fPin').value = ''; $('fPinRemove').checked = false;
+  $('pinRemoveRow').hidden = !d.pin;
+  $('fPin').placeholder = d.pin ? tm('pinKeep') : '';
+  $('formErr').hidden = true;
+  await countries();
+  const cc = d.city ? d.city.cc : '';
+  $('fCountry').innerHTML = `<option value="">—</option>` + [...COUNTRIES].sort((a, b) => cname(a).localeCompare(cname(b), L()))
+    .map(c => `<option value="${c.cc}"${c.cc === cc ? ' selected' : ''}>${esc(cname(c))}</option>`).join('');
+  fillCities(cc, d.city ? d.city.n : '');
+  if (d.city && !COUNTRIES.find(c => c.cc === cc)?.cities.some(ci => ci.n === d.city.n)) {
+    $('fCity').insertAdjacentHTML('beforeend', `<option value="__gps" selected>${esc(d.city.n)}</option>`);
+  }
+}
+function applyTexts(){ document.querySelectorAll('[data-t]').forEach(el => el.textContent = tm(el.dataset.t)); }
+
+$('uiLangs').addEventListener('click', e => { const b = e.target.closest('[data-l]'); if (!b) return; ui = b.dataset.l; openSetup(); });
+$('fCountry').onchange = () => {
+  const cc = $('fCountry').value; draftCity = null; fillCities(cc, '');
+  if (cc) $('fMethod').value = COUNTRY_METHOD[cc] || 'muslim_world_league';
+};
+$('fCity').onchange = () => {
+  const c = COUNTRIES.find(x => x.cc === $('fCountry').value);
+  const ci = c && c.cities.find(x => x.n === $('fCity').value);
+  if (ci) draftCity = { cc: ci.cc, n: ci.n, ar: ci.ar, lat: ci.lat, lng: ci.lng, tz: ci.tz };
+};
+$('iqRows').addEventListener('change', e => {
+  if (!e.target.id.startsWith('iqm_')) return;
+  const k = e.target.id.slice(4), inp = $('iqv_' + k), mode = e.target.value;
+  inp.hidden = mode === 'none';
+  if (mode === 'fixed') { inp.type = 'time'; inp.value = ''; inp.removeAttribute('min'); inp.removeAttribute('max'); }
+  if (mode === 'after') { inp.type = 'number'; inp.min = 1; inp.max = 90; inp.value = 15; }
+});
+$('gps').onclick = () => {
+  const msg = $('gpsMsg');
+  if (!navigator.geolocation) { msg.textContent = tm('gpsErr'); return; }
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude: lat, longitude: lng } = pos.coords; await countries();
+    let best = null, bd = Infinity; const k = Math.cos(lat * Math.PI / 180);
+    for (const c of COUNTRIES) for (const ci of c.cities) { const dx = (ci.lng - lng) * k, dy = ci.lat - lat, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = ci; } }
+    if (!best) { msg.textContent = tm('gpsErr'); return; }
+    draftCity = { cc: best.cc, n: best.n, ar: best.ar, lat: +lat.toFixed(5), lng: +lng.toFixed(5), tz: best.tz };
+    $('fCountry').value = best.cc; fillCities(best.cc, best.n);
+    $('fMethod').value = COUNTRY_METHOD[best.cc] || 'muslim_world_league';
+    msg.textContent = tm('gpsOk');
+  }, () => { msg.textContent = tm('gpsErr'); }, { enableHighAccuracy: true, timeout: 15000 });
+};
+$('cancel').onclick = () => showBoard();
+$('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = $('formErr'), name = $('fName').value.trim();
+  if (!name) { err.textContent = tm('noName'); err.hidden = false; $('fName').focus(); return; }
+  if (!draftCity) { err.textContent = tm('noCity'); err.hidden = false; $('fCountry').focus(); return; }
+  const pinTxt = $('fPin').value.trim();
+  if (pinTxt && !/^\d{4,12}$/.test(pinTxt)) { err.textContent = tm('pinShort'); err.hidden = false; $('fPin').focus(); return; }
+  let pin = C && C.pin ? C.pin : null;
+  if ($('fPinRemove').checked) pin = null;
+  if (pinTxt) { try { pin = await pinHash(pinTxt); } catch (e2) { pin = null; } }
+  const iq = {}, adj = {};
+  for (const k of FARD) {
+    const mode = $('iqm_' + k).value, v = $('iqv_' + k).value;
+    iq[k] = mode === 'none' ? 0 : mode === 'fixed' ? (/^\d\d:\d\d$/.test(v) ? v : 0) : Math.max(1, Math.min(90, +v || 15));
+    adj[k] = Math.max(-30, Math.min(30, Math.round(+$('adj_' + k).value || 0)));
+  }
+  const before = C ? canon(C) : '', prev = C;
+  C = { v: 1, name, sub: $('fSub').value.trim(), city: draftCity, method: $('fMethod').value, hanafi: $('fHanafi').checked, adj, iq,
+    jum: [$('fJum1').value, $('fJum2').value], ann: $('fAnn').value.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 12),
+    lang: $('fLang').value, lang2: $('fLang2').value, qr: $('fQr').checked, pin };
+  // Announcements, languages, QR and PIN are free; any change to name, place or times needs a new approval.
+  if (prev && canon(C) === before) { if (prev.ap) C.ap = prev.ap; if (prev.rj) C.rj = prev.rj; }
+  saveLocal();
+  history.replaceState(null, '', location.pathname);
+  showBoard();
+});
+
+/* ---------- approval ----------
+   The reviewer signs the essential settings (ECDSA P-256) with a key kept only on the reviewer's device; this page
+   checks the signature with the public key in admin-key.js. The signed text is the same in the phone app (lib/approval.dart). */
+const ADMIN = window.NUDIYA_ADMIN || null; // { keys: [base64url raw public keys], email, whatsapp }
+const approvalOn = () => !!(ADMIN && ADMIN.keys && ADMIN.keys.length);
+function canon(c){
+  const q = c.city || {}, r = x => Math.round((+x || 0) * 1e5);
+  return ['nudiya-mosque-v1', c.name || '', c.sub || '', q.cc || '', q.n || '', r(q.lat), r(q.lng), q.tz || '', c.method || '',
+    c.hanafi ? 1 : 0, FARD.map(k => Math.round(+((c.adj || {})[k] || 0))).join(','),
+    FARD.map(k => String((c.iq || {})[k] ?? 0)).join(','), (c.jum || []).filter(Boolean).join(',')].join('\n');
+}
+const ECDSA = { name: 'ECDSA', namedCurve: 'P-256' }, SIGN = { name: 'ECDSA', hash: 'SHA-256' };
+async function verifyWithAny(text, sig){
+  if (!sig) return false;
+  for (const k of ADMIN.keys) {
+    try {
+      const key = await crypto.subtle.importKey('raw', unb64u(k), ECDSA, false, ['verify']);
+      if (await crypto.subtle.verify(SIGN, key, unb64u(sig), new TextEncoder().encode(text))) return true;
+    } catch (e) {}
+  }
+  return false;
+}
+/** 'ok' | {rejected: reason} | 'pending' */
+async function approvalState(c){
+  if (!approvalOn()) return 'ok';
+  const text = canon(c);
+  if (await verifyWithAny(text, c.ap)) return 'ok';
+  if (c.rj && await verifyWithAny('reject\n' + text + '\n' + (c.rj.r || ''), c.rj.s)) return { rejected: c.rj.r || '' };
+  return 'pending';
+}
+async function reviewUrl(){ return location.origin + location.pathname + '?admin#m=' + await encode(shareCfg()); }
+const GATE_ICON = '<svg class="gicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>';
+function renderGate(st){
+  const g = $('gate');
+  if (st === 'ok') { g.hidden = true; return; }
+  const rej = typeof st === 'object';
+  g.innerHTML = `${rej ? GATE_ICON.replace('<path d="M9 12l2 2 4-4"/>', '<path d="M12 8v5M12 16.5v.01"/>') : GATE_ICON}<div class="gname">${esc(C.name)}</div>
+    ${rej ? `<div class="gwarn"><b>${esc(tm('gRejected'))}</b>${esc(tm('gRejectedMsg'))}${st.rejected ? `<br><b style="margin-top:8px">${esc(tm('gReason'))}</b>${esc(st.rejected)}` : ''}</div>`
+          : `<div class="olbl" style="color:var(--gold);font-size:clamp(18px,2vw,32px);font-weight:600">${esc(tm('gPending'))}</div><p class="gmsg">${esc(tm('gPendingMsg'))}</p>`}
+    <div class="actions"><button type="button" class="btn primary" id="gSend">${esc(tm('gSend'))}</button><button type="button" class="btn" id="gEdit">${esc(tm('edit'))}</button></div>`;
+  g.hidden = false;
+  $('gEdit').onclick = () => C && C.pin ? askPin() : openSetup();
+  $('gSend').onclick = sendForReview;
+}
+/* The imam chooses how to send the request: WhatsApp, Gmail in the browser, the e-mail app, the phone's share
+   sheet, or copying the link — a mosque TV often has no e-mail app set up. */
+async function sendForReview(){
+  const url = await reviewUrl(), text = `${tm('gReqText')} «${C.name}»`;
+  const opts = [];
+  if (ADMIN.whatsapp) opts.push(['WhatsApp', `https://wa.me/${ADMIN.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(text + '\n' + url)}`]);
+  if (ADMIN.email) {
+    opts.push(['Gmail', `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(ADMIN.email)}&su=${encodeURIComponent(text)}&body=${encodeURIComponent(url)}`]);
+    opts.push([tm('sendMail'), `mailto:${ADMIN.email}?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(url)}`]);
+  }
+  const box = $('sendBox');
+  box.innerHTML = `<div class="pincard"><h2>${esc(tm('gSend'))}</h2>
+    <div class="sendlist">${opts.map(([label, href], i) => `<a class="btn${i === 0 ? ' primary' : ''}" href="${esc(href)}" target="_blank" rel="noopener">${esc(label)}</a>`).join('')}
+    ${navigator.share ? `<button type="button" class="btn" id="sendShare">${esc(tm('share'))}</button>` : ''}
+    <button type="button" class="btn" id="sendCopy">${esc(tm('copyLink'))}</button></div>
+    ${ADMIN.email ? `<p class="hint" dir="ltr">${esc(ADMIN.email)}</p>` : ''}
+    <button type="button" class="linkbtn" id="sendClose">${esc(tm('cancel'))}</button></div>`;
+  box.hidden = false;
+  $('sendClose').onclick = () => { box.hidden = true; };
+  box.querySelectorAll('a').forEach(a => a.addEventListener('click', () => { setTimeout(() => { box.hidden = true; }, 300); }));
+  if ($('sendShare')) $('sendShare').onclick = async () => { try { await navigator.share({ title: text, text, url }); box.hidden = true; } catch (e) {} };
+  $('sendCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(text + '\n' + url); toast(tm('gResent')); box.hidden = true; } catch (e) { prompt(tm('gSend'), url); }
+  };
+}
+
+/* ---------- reviewer console (?admin) ----------
+   Arabic and English only: it is used by the Nudiya team. The private key never leaves this browser
+   (plus the backup file the reviewer downloads). */
+const AK = 'nudiya-reviewer-key';
+const A = (ar, en) => (navigator.language || 'ar').startsWith('ar') ? ar : en;
+async function adminKey(){
+  try { const j = JSON.parse(localStorage.getItem(AK) || 'null'); if (!j) return null;
+    return { pub: j.pub, key: await crypto.subtle.importKey('jwk', j.jwk, ECDSA, false, ['sign']), jwk: j.jwk }; } catch (e) { return null; }
+}
+function download(name, text, type = 'application/octet-stream'){
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+async function renderAdmin(){
+  document.documentElement.lang = A('ar', 'en'); document.documentElement.dir = A('rtl', 'ltr');
+  document.title = A('مراجعة المساجد · نودي للصلاة', 'Mosque review · Nudiya');
+  $('setup').hidden = true; $('board').hidden = true;
+  const box = $('admin'); box.hidden = false;
+  const k = await adminKey();
+  const listed = k && ADMIN && (ADMIN.keys || []).includes(k.pub);
+  let html = `<header><h1>${A('مراجعة شاشات المساجد', 'Mosque screen review')}</h1><p>${A('خاص بإدارة «نودي للصلاة»', 'For the Nudiya team')}</p></header>`;
+  html += `<fieldset><legend>${A('مفتاح المراجعة', 'Review key')}</legend>`;
+  if (!k) {
+    html += `<p>${A('لا يوجد مفتاح مراجعة في هذا المتصفح. أنشئ مفتاحًا مرة واحدة، أو استورد نسخته الاحتياطية.', 'No review key in this browser. Create one once, or import its backup.')}</p>
+      <div class="actions"><button type="button" class="btn primary" id="aNew">${A('إنشاء مفتاح المراجعة', 'Create the review key')}</button>
+      <label class="btn" style="cursor:pointer">${A('استيراد نسخة احتياطية', 'Import a backup')}<input type="file" id="aImport" accept=".json,application/json" hidden></label></div>`;
+  } else {
+    html += `<div class="status ${listed ? 'ok' : 'bad'}">${listed ? A('المفتاح مفعّل على الموقع: الشاشات لا تُعرض إلا بعد موافقتك.', 'The key is active on the site: screens show only after your approval.')
+        : A('المفتاح غير مفعّل بعد: نزّل admin-key.js وضعه في المجلد site/mosque ثم ارفع التحديث إلى GitHub.', 'The key is not active yet: download admin-key.js, put it in site/mosque and push the update to GitHub.')}</div>
+      <div class="row2"><div><label class="f" for="aMail">${A('بريد استقبال الطلبات (اختياري)', 'E-mail for requests (optional)')}</label><input type="text" id="aMail" dir="ltr" value="${esc((ADMIN && ADMIN.email) || '')}"></div>
+      <div><label class="f" for="aWa">${A('رقم واتساب لاستقبال الطلبات (اختياري)', 'WhatsApp number for requests (optional)')}</label><input type="text" id="aWa" dir="ltr" placeholder="39 3xx xxx xxxx" value="${esc((ADMIN && ADMIN.whatsapp) || '')}"></div></div>
+      <div class="actions" style="margin-top:12px"><button type="button" class="btn primary" id="aKeyJs">${A('تنزيل admin-key.js', 'Download admin-key.js')}</button>
+      <button type="button" class="btn" id="aBackup">${A('تنزيل نسخة احتياطية من المفتاح', 'Download a key backup')}</button></div>
+      <p class="hint">${A('احفظ النسخة الاحتياطية في مكان آمن. من يملكها يستطيع الموافقة على الشاشات.', 'Keep the backup safe: whoever has it can approve screens.')}</p>`;
+  }
+  html += `</fieldset>`;
+  if (k) {
+    html += `<fieldset><legend>${A('مراجعة طلب', 'Review a request')}</legend>
+      <label class="f" for="aLink">${A('رابط الطلب (يصل من الإمام)', 'Request link (sent by the imam)')}</label>
+      <input type="text" id="aLink" dir="ltr" value="${esc(location.hash ? location.href : '')}">
+      <div class="actions" style="margin-top:10px"><button type="button" class="btn" id="aOpen">${A('عرض الطلب', 'Show the request')}</button></div>
+      <div id="aReq"></div></fieldset>`;
+  }
+  box.innerHTML = html;
+  if (!k) {
+    $('aNew').onclick = async () => {
+      const pair = await crypto.subtle.generateKey(ECDSA, true, ['sign', 'verify']);
+      const pub = b64u(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey)));
+      const jwk = await crypto.subtle.exportKey('jwk', pair.privateKey);
+      localStorage.setItem(AK, JSON.stringify({ pub, jwk }));
+      download('nudiya-review-key-backup.json', JSON.stringify({ pub, jwk }), 'application/json');
+      renderAdmin();
+    };
+    $('aImport').onchange = async e => {
+      try { const j = JSON.parse(await e.target.files[0].text()); if (!j.pub || !j.jwk) throw 0; localStorage.setItem(AK, JSON.stringify(j)); renderAdmin(); }
+      catch (e2) { alert(A('الملف غير صالح.', 'Invalid file.')); }
+    };
+    return;
+  }
+  $('aKeyJs').onclick = () => {
+    const keys = [...new Set([...((ADMIN && ADMIN.keys) || []), k.pub])];
+    const cfg = { keys, email: $('aMail').value.trim(), whatsapp: $('aWa').value.trim() };
+    download('admin-key.js', '// Public key(s) of the Nudiya reviewer, made by mosque/?admin. Safe to publish (it can only check approvals).\nwindow.NUDIYA_ADMIN = ' + JSON.stringify(cfg, null, 1) + ';\n', 'text/javascript');
+  };
+  $('aBackup').onclick = () => download('nudiya-review-key-backup.json', JSON.stringify({ pub: k.pub, jwk: k.jwk }), 'application/json');
+  $('aOpen').onclick = () => showRequest(k);
+  if (location.hash) showRequest(k);
+}
+async function showRequest(k){
+  const out = $('aReq'), m = $('aLink').value.match(/[#&]m=([\w-]+)/);
+  if (!m) { out.innerHTML = `<p class="err">${A('الرابط غير صالح.', 'Invalid link.')}</p>`; return; }
+  let shared; try { shared = await decode(m[1]); } catch (e) { out.innerHTML = `<p class="err">${A('الرابط غير صالح.', 'Invalid link.')}</p>`; return; }
+  C = Object.assign({}, DEFAULT, shared);
+  const st = await approvalState(C);
+  const d0 = day(0), q = C.city;
+  const iqTxt = k2 => { const v = C.iq[k2]; return typeof v === 'number' && v > 0 ? `+${v} ${A('د', 'min')}` : (v ? String(v) : '—'); };
+  const map = `https://www.openstreetmap.org/?mlat=${q.lat}&mlon=${q.lng}#map=17/${q.lat}/${q.lng}`;
+  out.innerHTML = `<div class="status ${st === 'ok' ? 'ok' : 'bad'}">${st === 'ok' ? A('هذه البيانات موافَق عليها.', 'These settings are approved.') : typeof st === 'object' ? A('هذه البيانات مرفوضة سابقًا.', 'These settings were rejected.') : A('بانتظار قرارك.', 'Waiting for your decision.')}</div>
+    <dl class="kv"><dt>${A('المسجد', 'Mosque')}</dt><dd>${esc(C.name)}</dd><dt>${A('العنوان', 'Address')}</dt><dd>${esc(C.sub || '—')}</dd>
+    <dt>${A('المدينة', 'City')}</dt><dd>${esc(q.n)}${q.ar ? ' · ' + esc(q.ar) : ''} (${esc(q.cc)}) · ${esc(q.tz)}</dd>
+    <dt>${A('الإحداثيات', 'Coordinates')}</dt><dd><a href="${map}" target="_blank" rel="noopener">${q.lat}, ${q.lng}</a></dd>
+    <dt>${A('طريقة الحساب', 'Method')}</dt><dd>${esc((METHODS[C.method] || [C.method, C.method])[A(0, 1)])}${C.hanafi ? ' · ' + A('حنفي', 'Hanafi') : ''}</dd>
+    <dt>${A('الجمعة', 'Friday')}</dt><dd>${esc((C.jum || []).filter(Boolean).join(' · ') || '—')}</dd></dl>
+    <table style="margin-top:12px"><tr><th></th><th>${A('الأذان اليوم', 'Adhan today')}</th><th>${A('تعديل', 'Adj.')}</th><th>${A('الإقامة', 'Iqama')}</th><th>${A('الإقامة اليوم', 'Iqama today')}</th></tr>
+    ${FARD.map(k2 => `<tr><td>${esc(pname(k2, A('ar', 'en')))}</td><td class="n">${hm(d0[k2].adhan)}</td><td class="n">${(C.adj && C.adj[k2]) || 0}</td><td class="n">${esc(iqTxt(k2))}</td><td class="n">${d0[k2].iqama ? hm(d0[k2].iqama) : '—'}</td></tr>`).join('')}</table>
+    <label class="f" for="aReason" style="margin-top:14px">${A('سبب الرفض (يظهر على شاشة المسجد)', 'Reason for rejection (shown on the mosque screen)')}</label>
+    <textarea id="aReason" placeholder="${esc(A('اختياري، مثل: موقع المسجد على الخريطة لا يطابق العنوان.', 'Optional, e.g. the map location does not match the address.'))}"></textarea>
+    <div class="actions" style="margin-top:10px"><button type="button" class="btn primary" id="aOk">${A('قبول', 'Approve')}</button><button type="button" class="btn" id="aNo">${A('رفض', 'Reject')}</button></div>
+    <div id="aResult"></div>`;
+  const sign = async text => b64u(new Uint8Array(await crypto.subtle.sign(SIGN, k.key, new TextEncoder().encode(text))));
+  const result = async (label, obj) => {
+    const url = location.origin + location.pathname + '#m=' + await encode(obj);
+    $('aResult').innerHTML = `<div class="status ok">${label}</div><textarea class="out" readonly>${esc(url)}</textarea>
+      <div class="actions"><button type="button" class="btn primary" id="aCopy">${A('نسخ الرابط', 'Copy the link')}</button>${navigator.share ? `<button type="button" class="btn" id="aShare">${A('مشاركة', 'Share')}</button>` : ''}</div>`;
+    $('aCopy').onclick = async () => { try { await navigator.clipboard.writeText(url); toast(A('نُسخ', 'Copied')); } catch (e) {} };
+    if ($('aShare')) $('aShare').onclick = () => navigator.share({ title: C.name, url }).catch(() => {});
+  };
+  $('aOk').onclick = async () => {
+    const o = Object.assign({}, shared); delete o.rj; o.ap = await sign(canon(C));
+    result(A('تمت الموافقة. أرسل هذا الرابط إلى الإمام ليفتحه على شاشة المسجد:', 'Approved. Send this link to the imam to open on the mosque screen:'), o);
+  };
+  $('aNo').onclick = async () => {
+    const reason = $('aReason').value.trim();
+    const o = Object.assign({}, shared); delete o.ap; o.rj = { r: reason, s: await sign('reject\n' + canon(C) + '\n' + reason) };
+    result(A('تم الرفض. أرسل هذا الرابط إلى الإمام:', 'Rejected. Send this link to the imam:'), o);
+  };
+}
+
+/* ---------- board tools ---------- */
+function toast(msg){ const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 3500); }
+$('tEdit').onclick = () => C && C.pin ? askPin() : openSetup();
+$('tShare').onclick = async () => {
+  const url = await shareUrl();
+  if (navigator.share) { try { await navigator.share({ title: C.name, text: tm('linkNote'), url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(url); toast(tm('copied')); } catch (e) { prompt(tm('share'), url); }
+};
+let wakeLock = null;
+async function keepAwake(){ try { if ('wakeLock' in navigator && document.visibilityState === 'visible') wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !$('board').hidden) keepAwake(); });
+$('tFull').onclick = () => {
+  const el = document.documentElement;
+  if (document.fullscreenElement) document.exitFullscreen?.(); else (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el);
+  keepAwake();
+};
+window.addEventListener('touchstart', () => $('board').classList.add('touch'), { once: true, passive: true });
+
+let timer = null;
+async function showBoard(){
+  $('setup').hidden = true; $('board').hidden = false;
+  renderBoard(); keepAwake();
+  clearInterval(timer); timer = setInterval(tick, 1000);
+  renderGate(await approvalState(C));
+}
+
+/* ---------- start ---------- */
+(async function start(){
+  const l = (navigator.language || 'ar').slice(0, 2); ui = UI_LANGS.includes(l) ? l : 'ar';
+  if (/[?&]admin\b/.test(location.search)) { renderAdmin(); return; }
+  const m = location.hash.match(/[#&]m=([\w-]+)/);
+  if (m) {
+    try { const shared = await decode(m[1]); if (shared && shared.name && shared.city) { C = Object.assign({}, DEFAULT, shared, { qr: (loadLocal() || {}).qr ?? true }); saveLocal(); } } catch (e) {}
+  }
+  if (!C) C = loadLocal();
+  if (C && C.name && C.city) showBoard(); else { C = null; openSetup(); }
+})();
+// A new mosque link opened in the same tab (only the part after # changes): start again with it.
+window.addEventListener('hashchange', () => { if (/[#&]m=/.test(location.hash)) location.reload(); });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
+</script>
+<script src="../notice.js" data-persistent data-target="board" defer></script>
+</body>
+</html>
