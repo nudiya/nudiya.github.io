@@ -1,0 +1,12 @@
+{
+  "active": false,
+  "id": "example-1",
+  "level": "info",
+  "until": "",
+  "text": {
+    "ar": "مثال: تحديث جديد لتطبيق «نودي للصلاة» متاح للتحميل.",
+    "en": "Example: a new update of the Nudiya app is available.",
+    "fr": "Exemple : une nouvelle mise à jour de l’application Nudiya est disponible.",
+    "it": "Esempio: è disponibile un nuovo aggiornamento dell’app Nudiya."
+  }
+}
