@@ -1,0 +1,21 @@
+نُودِيَ لِلصَّلَاةِ (Nudiya) — جميع الحقوق محفوظة
+Copyright © 2026 Nudiya. All rights reserved.
+
+العربية:
+هذا البرنامج وموقعه وتصميمه وكوده ملك لصاحب مشروع «نودي للصلاة». يُسمح لأي شخص باستعمال
+التطبيق والموقع وشاشة المسجد مجانًا. ولا يُسمح بنسخ الكود أو تعديله أو إعادة نشره أو بيعه، كليًا
+أو جزئيًا، ولا بنشر نسخة معدّلة من التطبيق، إلا بإذن مكتوب من صاحب المشروع.
+
+English:
+This software, its website, design and source code are the property of the owner of the Nudiya
+project. Anyone may use the app, the website and the mosque screen free of charge. Copying,
+modifying, redistributing or selling the source code, in whole or in part, or publishing a modified
+version of the app, is not permitted without written permission from the project owner.
+
+Third-party parts keep their own licences (see the app's "Sound credits" and the files below):
+- adhan prayer-time library (MIT) — site/app/adhan.min.js, Dart package adhan
+- QR code generator by Kazuhiko Arase (MIT) — site/mosque/qrcode.js
+- Amiri and IBM Plex Sans Arabic fonts (SIL Open Font License) — assets/fonts/
+- City data © GeoNames (CC BY 4.0); country and month names © Unicode CLDR
+- World Magnetic Model coefficients (NOAA/BGS, public domain) — lib/geomag.dart
+- Free adhan recordings from Wikimedia Commons, under the licences listed in the app
